@@ -31,8 +31,14 @@ most common cases:
   
 Use:
 * option -e to pass environment variables into container: 
+
+```bash
+$ docker container run -p 3306:3306 -d --name mysql -e MYSQL_RANDOM_ROOT_PASSWORD=true mysql
 ```
-docker container run -p 3306:3306 -d --name mysql -e MYSQL_RANDOM_ROOT_PASSWORD=true mysql
+
+* option `--rm` automatically removes the container whet it exits
+```bash
+$ docker container ru --rm -it --name centos centos:7 bash
 ```
 
 
@@ -67,21 +73,179 @@ Container will be stopped when user exited bash.
 This option is handy when you need to install additional packages into container or do other administrative stuff with it.
 
 Attach to existing container (but not running) with a cli terminal:
-```
+
+```bash
 $ docker container start -ai <container-name/id>
 ```
+
 Connect to a running container and run additional process (bash/sh in our case):
-```
-docker container exec -it mysql bash
-docker container exec -it nginx sh
+
+```bash
+$ docker container exec -it mysql bash
+$ docker container exec -it nginx sh
 ```
 
+## Networking
 
+`docker container -p <host_port>:<container_port>` - port forwarding
+
+`docker container port <container>` - quick ports check of the container.
+
+All containers on a virtual (docketr) network can talk to each other without `-p` flag.
+Best practice is to create a new virtual network for each app. Container can be connected to any number of virtual networks from **zero** to **N**.
+
+Also, it's possible to skip virtual networks and use host IP (`--net=host`).
+
+`--format` flag is a replacement for external `grep` command. `--format` is cleaner and more consistent then grep.
+
+Example of how to get the IP address of the container:
+
+```bash
+$ docker container run -p 80:80 --name webhost -d nginx
+ac58cfa521a22de438f6ea328271ef759f43ec0ee0e6b29153b8bc48b597840f
+$ docker container inspect --format '{{ .NetworkSettings.IPAddress }}' webhost
+172.17.0.2
+$
+```
+
+Default docker network is: bridge/docker0.
+
+Containers in the same virtual network can freely talk to each other even if they don't expose ports to host with `-p` or `--publish` flag.
+
+Remember, that only **one** container can listen the port on a host level. 
+In other words, a host port can't bil listened by more than one container at the same time.
+
+* `docker network ls` - show networks
+* `docker network inspect <network>` - inspect a network
+* `docker network create <network_name>`
+*  or `docker network create <network_name> --driver <driver_name>` create a network
+* `docker network xonnect` - connect a network to container
+* `docker network disconnect` - detach a network from container
+
+Examples:
+```bash
+$ docker network create my_network
+85ca267e928a826a0c2c6ef7136a96b1f50cd29e80c2bdb6e360b5fc73a7ee97
+$ docker network ls
+NETWORK ID          NAME                DRIVER              SCOPE
+49481817aed2        bridge              bridge              local
+ef3e0336719d        host                host                local
+85ca267e928a        my_network          bridge              local
+3ce4f11ad443        none                null                local
+$ docker container run -d --name new_nginx --network my_network -p 8080:80 nginx:alpine
+```
+
+Attaching container to a network:
+```bash
+$ docker container run -d --name nginx3 -p 8080:80 nginx:alpine
+104c8f401085e0fc5ba5eba18b24ec0540fed1959d1267f3d296f23ba82df9ef
+$ docker network connect my_network 104c8
+$
+```
+
+### Docker networks: DNS
+
+Docker use container names as a DNS names to allow containers to talk to each other over the virtual network (inside the network).
+```bash
+$ docker network ls
+NETWORK ID          NAME                DRIVER              SCOPE
+49481817aed2        bridge              bridge              local
+ef3e0336719d        host                host                local
+85ca267e928a        my_network          bridge              local
+3ce4f11ad443        none                null                local
+$ docker container run -d --name nginx_1 -p 80:80 --network my_network nginx:alpine
+592e197b03e4c6e061338b9c18d6669a846ca088f5087c099b3212648949671e
+$ docker container run -d --name nginx_2 -p 8080:80 --network my_network nginx:alpine
+c444d5dd6bb2093f6dab6b5dcba3043460124c4a34bc49c02f9308ae5a80f076
+$ docker container exec -it nginx_2 ping nginx_1
+PING nginx_1 (172.18.0.2): 56 data bytes
+64 bytes from 172.18.0.2: seq=0 ttl=64 time=0.683 ms
+64 bytes from 172.18.0.2: seq=1 ttl=64 time=0.118 ms
+64 bytes from 172.18.0.2: seq=2 ttl=64 time=0.230 ms
+^C
+--- nginx_1 ping statistics ---
+3 packets transmitted, 3 packets received, 0% packet loss
+round-trip min/avg/max = 0.118/0.343/0.683 ms
+$
+```
+
+**Note 1:** a command to **ping another container**: `docker container exec -it nginx_2 ping nginx_1`
+
+**Note 2:** The default network (bridge) **does not** have a DNS server built in. In this case the command `docker container create --list` could be used.
+
+#### DNS round-robin
+
+We can have multiple containers on a created network respond to the same DNS address.
+
+Use `--network-alias` flag.
+
+```bash
+$ docker network create dude
+b34ccd362696cfbd8d73cc78ff8568c21efade93ddd86f829974a67f07209e63
+$ docker container run -d --net dude --net-alias search elasticsearch:2
+f2ea89e02ddc06c75e8f504ca7b58fc6aa4dd391fa269a2b8269ff0cefc9f43b
+$ docker container run -d --net dude --net-alias search elasticsearch:2
+025bc98201c28228068e37ad4ed529157f90a8f955bba884276d4bf68c754919
+$ docker container ls
+CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS              PORTS                NAMES
+025bc98201c2        elasticsearch:2     "/docker-entrypoint.…"   23 seconds ago      Up 21 seconds       9200/tcp, 9300/tcp   hardcore_nash
+f2ea89e02ddc        elasticsearch:2     "/docker-entrypoint.…"   57 seconds ago      Up 56 seconds       9200/tcp, 9300/tcp   optimistic_borg
+$ docker container run --rm --net dude alpine nslookup search
+nslookup: can't resolve '(null)': Name does not resolve
+
+Name:      search
+Address 1: 172.19.0.3 search.dude
+Address 2: 172.19.0.2 search.dude
+$ docker container run --rm --net dude centos curl -s search:9200
+{
+  "name" : "Doctor Leery",
+  "cluster_name" : "elasticsearch",
+  "cluster_uuid" : "AK4M9T-mQrK8yuTo9heapA",
+  "version" : {
+    "number" : "2.4.6",
+    "build_hash" : "5376dca9f70f3abef96a77f4bb22720ace8240fd",
+    "build_timestamp" : "2017-07-18T12:17:44Z",
+    "build_snapshot" : false,
+    "lucene_version" : "5.5.4"
+  },
+  "tagline" : "You Know, for Search"
+}
+$ docker container run --rm --net dude centos curl -s search:9200
+{
+  "name" : "Sybil Dorn",
+  "cluster_name" : "elasticsearch",
+  "cluster_uuid" : "mlPtiHDBQQytsbr-vD1jMQ",
+  "version" : {
+    "number" : "2.4.6",
+    "build_hash" : "5376dca9f70f3abef96a77f4bb22720ace8240fd",
+    "build_timestamp" : "2017-07-18T12:17:44Z",
+    "build_snapshot" : false,
+    "lucene_version" : "5.5.4"
+  },
+  "tagline" : "You Know, for Search"
+}
+```
+
+## Docker images
+
+Docker image, the **unofficial** defenition:
+**Docker image** IS the app binaries and dependencies AND metadata about the image data and how to run the image.
+
+Image is not a complete OS. It doesn't have kernel, kernel modules (drivers) etc... Host provides a kernel.
+
+
+* list local images: `docker image ls`
+* pull image: `docker image pull <image-name>:<image-version>` or just `docker image pull <image-name>`
+
+`docker image history <image-name>[:<image-version>]` - shows layers of changes made in image
+
+`docker image inspect <image>` - detailed info about the image's metadata in JSON format
 
 
 ## External links
 
 ### Containerization
+
 * [eBook: Docker for the Virtualization Admins](https://github.com/mikegcoleman/docker101/blob/master/Docker_eBook_Jan_2017.pdf)
 * [video: Cgroups, namespaces, and beyond: what are containers made from?](https://www.youtube.com/watch?v=sK5i-N34im8&feature=youtu.be&list=PLBmVKD7o3L8v7Kl_XXh3KaJl9Qw2lyuFl)
 
@@ -92,4 +256,17 @@ docker container exec -it nginx sh
 
 * [Package Management Basics: a pt, yum, dnf, pkg](https://www.digitalocean.com/community/tutorials/package-management-basics-apt-yum-dnf-pkg)
 
+* [Format command and log output](https://docs.docker.com/config/formatting/)
 
+### DNS basics
+
+* [Funny comics about DNS basics](https://howdns.works/)
+* [DNS: Why It’s Important and How It Works](https://dyn.com/blog/dns-why-its-important-how-it-works/)
+* [Round-robin DNS](https://en.wikipedia.org/wiki/Round-robin_DNS)
+
+### Docker images
+
+* [Docker Image Specification v1.0.0](https://github.com/moby/moby/blob/master/image/spec/v1.md)
+* [List of official docker images](https://github.com/docker-library/official-images/tree/master/library)
+* [About storage drivers](https://docs.docker.com/storage/storagedriver/)
+  
