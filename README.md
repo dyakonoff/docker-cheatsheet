@@ -36,6 +36,8 @@ Use:
 $ docker container run -p 3306:3306 -d --name mysql -e MYSQL_RANDOM_ROOT_PASSWORD=true mysql
 ```
 
+`docker run container -P ...` - run a container and opens all ports that are mentioned in `EXPOSE` command.
+
 * option `--rm` automatically removes the container whet it exits
 ```bash
 $ docker container ru --rm -it --name centos centos:7 bash
@@ -241,6 +243,113 @@ Image is not a complete OS. It doesn't have kernel, kernel modules (drivers) etc
 
 `docker image inspect <image>` - detailed info about the image's metadata in JSON format
 
+### Docker hub, tagging and pushing
+
+```bash
+$ docker pull mysql/mysql-server
+```
+
+`$ docker image tag` - has a lot in common with `git tag`
+
+`docker image tag <source-image>[:<tag>] <target-image>[:<tag>]` example:
+
+The default tag (if <tag> was skipped) is **latest**, although it's just a last layer in the image, like a HEAD in git.
+
+
+`docker login` - logs in to docker hub and stores the authentication key in user's profile as a file.
+
+`docker logout` - logs out and deletes file with auth key. USE IT in prod environment or on the shared/multi-user system.
+
+`docker push <image>` - it uploads and creates a new repo on docker hub if such repo didn't exist.
+
+Example:
+
+```bash
+$ docker push dyakonoff/nginx
+```
+
+
+Creating a new image/repo & tag=latest from the standard repo:
+
+```bash
+$ docker image tag nginx dyakonoff/my_nginx
+```
+
+Tagging existing image (re-tagging):
+
+```bash
+$ docker image tag dyakonoff/nginx dyakonoff/nginx:testing
+```
+
+## Docker file
+
+`Dockerfile` - is just a convention/default name. If needed, any file name can be used with `-f` flag: `docker build -f some-dockerfile`
+
+`docker image build -t customnginx .` - build z Dockerfile locally.
+
+## Docker Volumes
+
+```bash
+$ docker volume ls
+DRIVER              VOLUME NAME
+local               bbde38153b472fcb3c048925f0ea66d0776c80a9dc1dd5b5807f11c97e9ff962
+local               d24c52ae324abc6984aa01b6ce92268af7dcf69de4bbfc8841048cfc231fb679
+```
+
+Named volumes, they also persist data between containers:
+
+```bash
+$ docker container run -d --name mysql -e MYSQL_ALLOW_EMPTY_PASSWORD=True -v mysql-db:/var/lib/mysql mysql
+2612d31c557f0a89ae2001672040c0a5ed95d2231fcec9106345989a28719486
+03:24:12 dyakonov@MacBook-Pro-dyakonov:~/projects/mydocs/docker-cheatsheet (master)*$ docker volume ls
+DRIVER              VOLUME NAME
+local               bbde38153b472fcb3c048925f0ea66d0776c80a9dc1dd5b5807f11c97e9ff962
+local               d24c52ae324abc6984aa01b6ce92268af7dcf69de4bbfc8841048cfc231fb679
+local               mysql-db
+$
+$ docker volume inspect mysql-db
+[
+    {
+        "CreatedAt": "2019-04-23T23:24:28Z",
+        "Driver": "local",
+        "Labels": null,
+        "Mountpoint": "/var/lib/docker/volumes/mysql-db/_data",
+        "Name": "mysql-db",
+        "Options": null,
+        "Scope": "local"
+    }
+]
+```
+
+`docker volume create` - is required to use different drivers and put labels on volumes.
+
+## Bind Mounting
+
+* It's a mapping of a host file or directory to a container file or directory.
+* It skips UFS and host files overlaps any in container (if there are files wit the same path).
+* Must be at `container run` command
+
+Format of mapping: `docker container run ... -v <host-path>:<container-path>`
+
+Bind mounts **starts with a forward slash or tilda?**.
+
+Example:
+```bash
+$ docker container run -d --name mysql2 -e MYSQL_ALLOW_EMPTY_PASSWORD=True -v ~/projects/data/mysql-db:/var/lib/mysql mysql
+a79f56e6d943bc84beca50b67c77651ee58fbafba38e6340f3008b93be031302
+$ ls ~/projects/data/mysql-db/
+#innodb_temp       binlog.000002      ca.pem             ib_buffer_pool     ibdata1            mysql.ibd          public_key.pem     sys
+auto.cnf           binlog.index       client-cert.pem    ib_logfile0        ibtmp1             performance_schema server-cert.pem    undo_001
+binlog.000001      ca-key.pem         client-key.pem     ib_logfile1        mysql              private_key.pem    server-key.pem     undo_002
+```
+
+
+
+
+
+
+
+
 
 ## External links
 
@@ -249,7 +358,7 @@ Image is not a complete OS. It doesn't have kernel, kernel modules (drivers) etc
 * [eBook: Docker for the Virtualization Admins](https://github.com/mikegcoleman/docker101/blob/master/Docker_eBook_Jan_2017.pdf)
 * [video: Cgroups, namespaces, and beyond: what are containers made from?](https://www.youtube.com/watch?v=sK5i-N34im8&feature=youtu.be&list=PLBmVKD7o3L8v7Kl_XXh3KaJl9Qw2lyuFl)
 
-## Commands for Getting Into The Local Docker VM
+### Commands for Getting Into The Local Docker VM
 * [Docker for Mac Commands](https://www.bretfisher.com/docker-for-mac-commands-for-getting-into-local-docker-vm/)
 * [Getting a Shell in the Docker for Windows Moby VM](https://www.bretfisher.com/getting-a-shell-in-the-docker-for-windows-vm/)
 
@@ -270,3 +379,10 @@ Image is not a complete OS. It doesn't have kernel, kernel modules (drivers) etc
 * [List of official docker images](https://github.com/docker-library/official-images/tree/master/library)
 * [About storage drivers](https://docs.docker.com/storage/storagedriver/)
   
+### Dockerfile reference
+
+* [Dockerfile reference](https://docs.docker.com/engine/reference/builder/)
+
+### Security
+
+* [Docker security cheat sheet (Russian)](https://habr.com/ru/company/acribia/blog/448704/)
