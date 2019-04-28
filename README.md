@@ -121,7 +121,7 @@ In other words, a host port can't bil listened by more than one container at the
 * `docker network inspect <network>` - inspect a network
 * `docker network create <network_name>`
 *  or `docker network create <network_name> --driver <driver_name>` create a network
-* `docker network xonnect` - connect a network to container
+* `docker network connect` - connect a network to container
 * `docker network disconnect` - detach a network from container
 
 Examples:
@@ -343,8 +343,30 @@ auto.cnf           binlog.index       client-cert.pem    ib_logfile0        ibtm
 binlog.000001      ca-key.pem         client-key.pem     ib_logfile1        mysql              private_key.pem    server-key.pem     undo_002
 ```
 
+## Docker compose
+
+`docker-compose.yml` file might have it's own versions: 1, 2, 2.1, 3, 3.1
+
+`docker-compose.yml` file can be used with `docker-compose` command for local docker automation or to be used with docker Swarm.
 
 
+### Command line (docker-compose)
+
+```
+$ docker-compose --help
+```
+
+Docker compose is a tool for development and testing, not a production-grade tool!
+
+Common commands:
+
+```
+$ docker-compose up
+$ docker-compose down
+```
+
+* `docker-compose up` - setup volumes/networks and start all the containers
+* `docker-compoae down` - stop all the containers and remove containers, volumes and networks.
 
 
 
@@ -386,3 +408,14 @@ binlog.000001      ca-key.pem         client-key.pem     ib_logfile1        mysq
 ### Security
 
 * [Docker security cheat sheet (Russian)](https://habr.com/ru/company/acribia/blog/448704/)
+
+### Composer
+
+* [Compose file versions and upgrading](https://docs.docker.com/compose/compose-file/compose-versioning/)
+* [Compose file v3 reference](https://docs.docker.com/compose/compose-file/)
+
+#### YML Reference
+
+* [Get Started](https://yaml.org/start.html)
+* [Reference card](https://yaml.org/refcard.html)
+* [Specification](https://yaml.org/spec/1.2/spec.html)
