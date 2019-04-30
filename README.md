@@ -401,6 +401,61 @@ List nodes:
 $ docker node ls
 ```
 
+Examples:
+
+```
+$ docker service ls
+ID                  NAME                MODE                REPLICAS            IMAGE               PORTS
+$ docker service create alpine ping 8.8.8.8
+i5cfpa16ihp1j75mu9wk9712f
+overall progress: 1 out of 1 tasks
+1/1: running   [==================================================>]
+verify: Service converged
+$ docker service ls
+ID                  NAME                MODE                REPLICAS            IMAGE               PORTS
+i5cfpa16ihp1        elastic_ganguly     replicated          1/1                 alpine:latest
+$
+```
+
+List services and containers in them:
+
+```
+$ docker service ls
+ID                  NAME                MODE                REPLICAS            IMAGE               PORTS
+i5cfpa16ihp1        elastic_ganguly     replicated          1/1                 alpine:latest
+$ docker service ps elastic_ganguly
+ID                  NAME                IMAGE               NODE                    DESIRED STATE       CURRENT STATE            ERROR               PORTS
+q87wwgk6kq9x        elastic_ganguly.1   alpine:latest       linuxkit-025000000001   Running             Running 17 minutes ago
+```
+
+Scaling service UP:
+```
+$ $ docker service update elastic_ganguly --replicas 3
+elastic_ganguly
+overall progress: 3 out of 3 tasks
+1/3: running   [==================================================>]
+2/3: running   [==================================================>]
+3/3: running   [==================================================>]
+verify: Service converged
+$ docker service ls
+ID                  NAME                MODE                REPLICAS            IMAGE               PORTS
+i5cfpa16ihp1        elastic_ganguly     replicated          3/3                 alpine:latest
+$ $ docker service ps elastic_ganguly
+ID                  NAME                IMAGE               NODE                    DESIRED STATE       CURRENT STATE                ERROR               PORTS
+q87wwgk6kq9x        elastic_ganguly.1   alpine:latest       linuxkit-025000000001   Running             Running 21 minutes ago
+lja7trfek1ln        elastic_ganguly.2   alpine:latest       linuxkit-025000000001   Running             Running about a minute ago
+j2dgkenkmc0f        elastic_ganguly.3   alpine:latest       linuxkit-025000000001   Running             Running about a minute ago
+$ docker service rm elastic_ganguly
+elastic_ganguly
+$ docker service ls
+ID                  NAME                MODE                REPLICAS            IMAGE               PORTS
+$
+```
+
+Resources usage management: `docker service update`
+
+Stop & remove services: `docker service rm <SERICE_ID>`
+
 
 
 ## External links
