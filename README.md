@@ -345,7 +345,7 @@ binlog.000001      ca-key.pem         client-key.pem     ib_logfile1        mysq
 
 ## Docker compose
 
-`docker-compose.yml` file might have it's own versions: 1, 2, 2.1, 3, 3.1
+`docker-compose.yml` file might have it's own versions: 1, 2, 2.1, 3, 3.1, ....
 
 `docker-compose.yml` file can be used with `docker-compose` command for local docker automation or to be used with docker Swarm.
 
@@ -356,24 +356,60 @@ binlog.000001      ca-key.pem         client-key.pem     ib_logfile1        mysq
 $ docker-compose --help
 ```
 
-Docker compose is a tool for development and testing, not a production-grade tool!
+_Docker compose is a tool for development and testing, not a production-grade tool!_
 
-Common commands:
+**Common commands:**
 
 ```
 $ docker-compose up
 $ docker-compose down
 ```
 
-* `docker-compose up` - setup volumes/networks and start all the containers
-* `docker-compoae down` - stop all the containers and remove containers, volumes and networks.
+* `docker-compose up` - setup volumes/networks and start all the containers, build images id can;t find them
+* `docker-compoae down` - stop all the containers and remove containers and networks (and volumes if there was a flag `-v`)
 
+`docker-compose up -d` - runs all services in background (default option - in foreground + copying output/logs to console)
 
+`docker-compose logs` - shows logs of containers that were up with `docker-compose up -d` command.
 
+`docker-compose ps` - lists containers that are ran by docker-compose
+
+`docker-compose top` - shows top processes of all containers that has been started with `docker-compose up`
+
+`docker-compose build` - rebuild images, also we can use `docker-compose up --build`
+
+`docker-compose down --rmi` - stop containers and remove images (see `docker-compose down --help` for more details)
+
+## Docker Swarm
+
+Check swarm status:
+```
+$ docker info | grep -i swarm
+Swarm: inactive
+$
+```
+
+Initializing swarm feature, creates a new 'Leader' node, creates root certeficates, creates a config DB:
+```
+$ docker swarm init
+```
+
+Deactivating swarm feature: `docker swarm leave --force`
+
+List nodes:
+```
+$ docker node ls
+```
 
 
 
 ## External links
+
+### References
+
+* [Docker file](https://docs.docker.com/engine/reference/builder/)
+* [Docker compose file](https://docs.docker.com/compose/compose-file/)
+* [Deploy services to a swarm](https://docs.docker.com/engine/swarm/services/)
 
 ### Containerization
 
@@ -419,3 +455,32 @@ $ docker-compose down
 * [Get Started](https://yaml.org/start.html)
 * [Reference card](https://yaml.org/refcard.html)
 * [Specification](https://yaml.org/spec/1.2/spec.html)
+
+### Docker Swarm
+
+* [Docker 1.12 Swarm Mode Deep Dive Part 1: Topology (Video)](https://www.youtube.com/watch?v=dooPhkXT9yI)
+* [Docker 1.12 Swarm Mode Deep Dive Part 2: Orchestration (Video)](https://www.youtube.com/watch?v=_F6PSP-qhdA)
+* [Heart of the SwarmKit: Topology Management (Slides)](https://speakerdeck.com/aluzzardi/heart-of-the-swarmkit-topology-management)
+* [Heart of the SwarmKit: Store, Topology & Object Model (Video)](https://www.youtube.com/watch?v=EmePhjGnCXY)
+* [Raft: Understandable Distributed Consensus](http://thesecretlivesofdata.com/raft/)
+
+
+* [Deploy services to a swarm](https://docs.docker.com/engine/swarm/services/)
+
+## Hints
+
+Use next command to save space when cloning a git repositary to an image:
+
+```
+$ git clone --branch <BRANCH-NAME> --sing-branch --depth 1 <GIT-REPO-URI>
+```
+
+Remove `apt-get` cache after downloading updates for an image (example is for Ubuntu):
+```
+$ rm -rf /var/lib/apt/lists/*
+```
+
+Chown useful flag to change owner and group recursively: `chown -R <USER>:<GROUP> <FOLDER>`
+
+
+
